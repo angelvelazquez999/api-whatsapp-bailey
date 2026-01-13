@@ -1,0 +1,27 @@
+# Imagen base Node.js 18 Alpine (ligera)
+FROM node:18-alpine
+
+# Directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de dependencias
+COPY package*.json ./
+
+# Instalar dependencias de producción
+RUN npm ci --only=production
+
+# Copiar código fuente
+COPY src ./src
+
+# Crear directorio de sesiones
+RUN mkdir -p sessions
+
+# Puerto expuesto
+EXPOSE 3000
+
+# Variables de entorno por defecto
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Comando de inicio
+CMD ["node", "src/index.js"]
