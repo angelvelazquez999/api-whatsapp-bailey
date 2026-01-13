@@ -17,11 +17,11 @@ COPY src ./src
 RUN mkdir -p sessions
 
 # Puerto expuesto
-EXPOSE 3000
+EXPOSE 3214
 
 # Variables de entorno por defecto
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3214
 
 # Comando de inicio
 CMD ["node", "src/index.js"]
