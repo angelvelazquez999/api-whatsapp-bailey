@@ -1,5 +1,5 @@
-# Imagen base Node.js 18 Alpine (ligera)
-FROM node:18-alpine
+# Imagen base Node.js 22 LTS Alpine (ligera)
+FROM node:22-alpine
 
 # Directorio de trabajo
 WORKDIR /app
