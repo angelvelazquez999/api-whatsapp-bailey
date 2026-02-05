@@ -15,6 +15,8 @@ import { config } from '../config/index.js';
 let sock = null;
 let connectionState = 'disconnected'; // disconnected, connecting, connected
 let currentQR = null; // Almacena el QR actual para exponerlo vía API
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
 
 // Logger silencioso para Baileys (evita spam en consola)
 const logger = pino({ level: config.LOG_LEVEL });
@@ -61,7 +63,7 @@ export async function initWhatsApp() {
     // Guardar QR para exponerlo vía API
     if (qr) {
       currentQR = qr;
-      console.log('[WhatsApp] QR generado. Escanéalo en: http://localhost:3000/qr');
+      console.log('[WhatsApp] QR generado. Escanéalo en /qr');
     }
     
     if (connection === 'connecting') {
@@ -72,27 +74,33 @@ export async function initWhatsApp() {
     if (connection === 'open') {
       connectionState = 'connected';
       currentQR = null; // Ya no necesitamos el QR
+      reconnectAttempts = 0; // Resetear intentos al conectar
       console.log('[WhatsApp] ✓ Conectado exitosamente');
     }
     
     if (connection === 'close') {
       connectionState = 'disconnected';
-      const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+      currentQR = null; // Limpiar QR viejo
       
-      console.log(`[WhatsApp] Conexión cerrada. Razón: ${reason}`);
+      const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut && 
+                              statusCode !== DisconnectReason.badSession;
       
-      // Manejar diferentes tipos de desconexión
-      if (reason === DisconnectReason.loggedOut) {
-        console.log('[WhatsApp] Sesión cerrada. Elimina la carpeta de sesión y reinicia.');
-        // No reconectar si el usuario cerró sesión
-      } else if (reason === DisconnectReason.badSession) {
-        console.log('[WhatsApp] Sesión corrupta. Elimina la carpeta de sesión y reinicia.');
-      } else {
-        // Reconexión automática para otros casos
-        console.log('[WhatsApp] Reconectando en 3 segundos...');
+      console.log(`[WhatsApp] Conexión cerrada. Código: ${statusCode}`);
+      
+      if (statusCode === DisconnectReason.loggedOut) {
+        console.log('[WhatsApp] Sesión cerrada desde el teléfono. Elimina /sessions y reinicia.');
+      } else if (statusCode === DisconnectReason.badSession) {
+        console.log('[WhatsApp] Sesión corrupta. Elimina /sessions y reinicia.');
+      } else if (shouldReconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts++;
+        const delay = Math.min(3000 * reconnectAttempts, 30000); // Backoff: 3s, 6s, 9s... max 30s
+        console.log(`[WhatsApp] Reconectando en ${delay/1000}s (intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
         setTimeout(() => {
           initWhatsApp();
-        }, 3000);
+        }, delay);
+      } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.log('[WhatsApp] Máximo de reconexiones alcanzado. Reinicia el contenedor.');
       }
     }
   });
