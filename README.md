@@ -77,6 +77,39 @@ Respuesta exitosa:
 }
 ```
 
+#### Enviar imagen
+```bash
+# Con URL
+curl -X POST http://localhost:3000/send-image \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "521XXXXXXXXXX",
+    "image": "https://ejemplo.com/imagen.jpg",
+    "caption": "Texto opcional para la imagen"
+  }'
+
+# Con base64
+curl -X POST http://localhost:3000/send-image \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "521XXXXXXXXXX",
+    "image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
+    "caption": "Imagen en base64"
+  }'
+```
+
+Respuesta exitosa:
+```json
+{
+  "success": true,
+  "data": {
+    "messageId": "3EB0...",
+    "to": "521XXXXXXXXXX",
+    "timestamp": "2026-01-13T12:00:00.000Z"
+  }
+}
+```
+
 ## Docker
 
 ### Construir imagen
@@ -141,7 +174,7 @@ baileys-msg-api/
 
 ## Ejemplos con Postman
 
-### Enviar mensaje
+### Enviar mensaje de texto
 
 - **Method**: POST
 - **URL**: `http://localhost:3000/send-message`
@@ -151,6 +184,20 @@ baileys-msg-api/
 {
   "to": "521XXXXXXXXXX",
   "message": "Mensaje de prueba desde Postman"
+}
+```
+
+### Enviar imagen
+
+- **Method**: POST
+- **URL**: `http://localhost:3000/send-image`
+- **Headers**: `Content-Type: application/json`
+- **Body** (raw JSON):
+```json
+{
+  "to": "521XXXXXXXXXX",
+  "image": "https://picsum.photos/800/600",
+  "caption": "Imagen de prueba con caption"
 }
 ```
 

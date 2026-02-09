@@ -59,7 +59,8 @@ async function start() {
       console.log(`  GET  /health       - Health check`);
       console.log(`  GET  /status       - Estado de WhatsApp`);
       console.log(`  GET  /qr           - Código QR para vincular`);
-      console.log(`  POST /send-message - Enviar mensaje`);
+      console.log(`  POST /send-message - Enviar mensaje de texto`);
+      console.log(`  POST /send-image   - Enviar imagen`);
       console.log('');
     });
     

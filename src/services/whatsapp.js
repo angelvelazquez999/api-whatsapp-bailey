@@ -126,6 +126,35 @@ export function isConnected() {
 }
 
 /**
+ * Valida y limpia un número de teléfono
+ * @private
+ */
+function validateAndCleanNumber(to) {
+  const cleanNumber = to.replace(/[+\s-]/g, '');
+  if (!/^\d{10,15}$/.test(cleanNumber)) {
+    throw new Error('Número de teléfono inválido. Debe tener entre 10 y 15 dígitos.');
+  }
+  return cleanNumber;
+}
+
+/**
+ * Descarga una imagen desde una URL
+ * @private
+ */
+async function downloadImage(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error) {
+    throw new Error(`Error descargando imagen: ${error.message}`);
+  }
+}
+
+/**
  * Envía un mensaje de texto a un número de WhatsApp
  * @param {string} to - Número de teléfono (ej: 521XXXXXXXXXX)
  * @param {string} message - Mensaje a enviar
@@ -135,21 +164,11 @@ export async function sendTextMessage(to, message) {
     throw new Error('WhatsApp no está conectado');
   }
   
-  // Limpiar número: remover +, espacios, guiones
-  const cleanNumber = to.replace(/[+\s-]/g, '');
-  
-  // Validar formato del número
-  if (!/^\d{10,15}$/.test(cleanNumber)) {
-    throw new Error('Número de teléfono inválido. Debe tener entre 10 y 15 dígitos.');
-  }
-  
-  // Convertir a formato WhatsApp (jid)
+  const cleanNumber = validateAndCleanNumber(to);
   const jid = `${cleanNumber}@s.whatsapp.net`;
   
   try {
-    // Enviar mensaje
     const result = await sock.sendMessage(jid, { text: message });
-    
     console.log(`[WhatsApp] Mensaje enviado a ${cleanNumber}`);
     
     return {
@@ -161,6 +180,55 @@ export async function sendTextMessage(to, message) {
   } catch (error) {
     console.error(`[WhatsApp] Error enviando mensaje:`, error.message);
     throw new Error(`Error al enviar mensaje: ${error.message}`);
+  }
+}
+
+/**
+ * Envía una imagen con caption opcional a un número de WhatsApp
+ * @param {string} to - Número de teléfono (ej: 521XXXXXXXXXX)
+ * @param {string} imageUrl - URL de la imagen o base64 (data:image/...)
+ * @param {string} caption - Texto opcional para la imagen
+ */
+export async function sendImageMessage(to, imageUrl, caption = '') {
+  if (!isConnected()) {
+    throw new Error('WhatsApp no está conectado');
+  }
+  
+  const cleanNumber = validateAndCleanNumber(to);
+  const jid = `${cleanNumber}@s.whatsapp.net`;
+  
+  try {
+    let imageBuffer;
+    
+    // Detectar si es base64 o URL
+    if (imageUrl.startsWith('data:image/')) {
+      // Base64
+      const base64Data = imageUrl.split(',')[1];
+      imageBuffer = Buffer.from(base64Data, 'base64');
+    } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      // URL - descargar
+      imageBuffer = await downloadImage(imageUrl);
+    } else {
+      throw new Error('Formato de imagen inválido. Usa URL (http/https) o base64 (data:image/...)');
+    }
+    
+    const messageContent = {
+      image: imageBuffer,
+      caption: caption || ''
+    };
+    
+    const result = await sock.sendMessage(jid, messageContent);
+    console.log(`[WhatsApp] Imagen enviada a ${cleanNumber}`);
+    
+    return {
+      success: true,
+      messageId: result.key.id,
+      to: cleanNumber,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error(`[WhatsApp] Error enviando imagen:`, error.message);
+    throw new Error(`Error al enviar imagen: ${error.message}`);
   }
 }
 

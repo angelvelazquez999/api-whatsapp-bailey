@@ -1,7 +1,13 @@
 // Rutas de la API de WhatsApp
 import { Router } from 'express';
 import QRCode from 'qrcode';
-import { sendTextMessage, getConnectionState, isConnected, getCurrentQR } from '../services/whatsapp.js';
+import { 
+  sendTextMessage, 
+  sendImageMessage,
+  getConnectionState, 
+  isConnected, 
+  getCurrentQR 
+} from '../services/whatsapp.js';
 
 const router = Router();
 
@@ -188,6 +194,60 @@ router.post('/send-message', async (req, res) => {
     
   } catch (error) {
     console.error('[API] Error en /send-message:', error.message);
+    
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /send-image
+ * Envía una imagen con caption opcional por WhatsApp
+ * Body: { 
+ *   "to": "521XXXXXXXXXX", 
+ *   "image": "https://example.com/image.jpg" o "data:image/jpeg;base64,...",
+ *   "caption": "Texto opcional" 
+ * }
+ */
+router.post('/send-image', async (req, res) => {
+  try {
+    const { to, image, caption } = req.body;
+    
+    // Validar campos requeridos
+    if (!to) {
+      return res.status(400).json({
+        success: false,
+        error: 'El campo "to" es requerido'
+      });
+    }
+    
+    if (!image) {
+      return res.status(400).json({
+        success: false,
+        error: 'El campo "image" es requerido (URL o base64)'
+      });
+    }
+    
+    // Verificar conexión antes de enviar
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        error: 'WhatsApp no está conectado. Escanea el QR primero.'
+      });
+    }
+    
+    // Enviar imagen
+    const result = await sendImageMessage(to, image, caption);
+    
+    res.json({
+      success: true,
+      data: result
+    });
+    
+  } catch (error) {
+    console.error('[API] Error en /send-image:', error.message);
     
     res.status(500).json({
       success: false,
